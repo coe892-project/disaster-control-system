@@ -6,7 +6,8 @@ from typing import Tuple
 class TileType(Enum):
     DISASTER = 0
     FREE = 1
-    BLOCKED = 2
+    STATION = 2
+    TERRAIN = 3
 
 
 class Dispatch:
@@ -17,10 +18,11 @@ class Dispatch:
     def __init__(self, map_size: Tuple[int, int]):
         """
         Initializes the dispatch service with a blank map of the given map_size tuple.
-        :param map_size: Tuple of X,Y dimensions
+        :param map_size: Tuple of X,Y dimensions.
         """
         self.world_map: list[list[TileType]] = [[TileType.FREE for _ in range(map_size[0])] for _ in
                                                 range(map_size[1])]
+        self.station_coordinates: list[Tuple[int, int]] = []
 
     def generate_map(self):
         """
@@ -34,19 +36,35 @@ class Dispatch:
         for y in range(len(self.world_map[1])):
             for x in range(len(self.world_map[0])):
                 if random.random() < terrain_chance:
-                    self.set_tile(x, y, TileType.BLOCKED)
+                    self.set_tile(x, y, TileType.TERRAIN)
                 # If the terrain could not spawn on its base chance, check neighbours to see if there are any terrain
                 # tiles in the vicinity, and apply an increased spawn chance
-                elif self.check_neighbours((x, y), TileType.BLOCKED) \
+                elif self.check_neighbours((x, y), TileType.TERRAIN) \
                         and random.random() * 1.5 < terrain_chance:
-                    self.set_tile(x, y, TileType.BLOCKED)
+                    self.set_tile(x, y, TileType.TERRAIN)
+
+    def generate_stations(self, num_stations: int):
+        """
+        Generates a given amount of stations and places them randomly on the map.
+        :param num_stations: Number of stations to be generated.
+        :return:
+        """
+        max_x, max_y = len(self.world_map[0]) - 1, len(self.world_map) - 1
+        for _ in range(num_stations):
+            valid_spot = False
+            while not valid_spot:
+                x, y = random.randint(0, max_x), random.randint(0, max_y)
+                if self.get_tile(x, y) == TileType.FREE and not self.check_neighbours((x, y), TileType.STATION) and \
+                        not self.check_neighbours((x, y), TileType.TERRAIN):
+                    self.set_tile(x, y, TileType.STATION)
+                    self.station_coordinates.append((x, y))
+                    valid_spot = True
 
     def check_neighbours(self, position: Tuple[int, int], tile: TileType) -> bool:
         """
         Check neighbours of a tile at an index for another tile type, returning true if a tile is found.
-        :param map_state:
-        :param position: X,Y coordinates to check for neighbours
-        :param tile: Tile type enum to check for
+        :param position: X,Y coordinates to check for neighbours.
+        :param tile: Tile type enum to check for.
         :return: Boolean indicating if the given map position has a neighbour of the given tile type.
         """
         x, y = position
@@ -76,10 +94,10 @@ class Dispatch:
 
     def get_tile(self, x: int, y: int) -> TileType:
         """
-        Returns the tile at the given coordinate
-        :param x: X coordinate of the tile
-        :param y: Y coordinate of the tile
-        :return: Tile
+        Returns the tile at the given coordinate.
+        :param x: X coordinate of the tile.
+        :param y: Y coordinate of the tile.
+        :return: Tile at coordinates.
         """
         if (x > 0 and y > 0) or (x < len(self.world_map[0]) and y < len(self.world_map)):
             return self.world_map[y][x]
@@ -88,10 +106,10 @@ class Dispatch:
 
     def set_tile(self, x: int, y: int, tile: TileType):
         """
-        Sets the tile at the given coordinate
-        :param x: X coordinate of the tile
-        :param y: Y coordinate of the tile
-        :param tile: Tile enum to be used
+        Sets the tile at the given coordinate.
+        :param x: X coordinate of the tile.
+        :param y: Y coordinate of the tile.
+        :param tile: Tile enum to be used.
         """
         if (x > 0 and y > 0) or (x < len(self.world_map[0]) and y < len(self.world_map)):
             self.world_map[y][x] = tile
@@ -105,8 +123,3 @@ class Dispatch:
                 map_str += str(self.get_tile(x, y).value)
             map_str += "\n"
         return map_str
-
-
-d = Dispatch((10, 10))
-d.generate_map()
-print(d)
