@@ -8,6 +8,7 @@ import pickle
 import pika
 import pprint
 
+app = FastAPI()
 class Vehicle_Type(Enum):
     ambulance = 1
     firetruck = 2
@@ -16,9 +17,10 @@ class Vehicle_Type(Enum):
 
 ##Just for reference
 class Tile_Type(Enum):
-    Disaster = 0
-    Free = 1
-    Blocked = 2 ##Not sure if we need this
+    DISASTER = 0
+    FREE = 1
+    STATION = 2
+    TERRAIN = 3
 
 current_path = []
 map = [[1, 1, 1, 0, 1], [1, 1, 0, 0, 1], [0, 1, 0, 1, 1], [1, 1, 0, 0, 0],  [1, 1, 1, 1, 1]]
@@ -28,66 +30,87 @@ stations = []
 # Dispatch choose based on the response and list (shortest distance) and dispatch sends a
 # message designating which stations to send
 class Station:
+    """
+    Station Object
+    number -> id of the station
+    vehicles -> list of vehicle objects per station
+    coordinates -> coords of station
+    """
     def __init__(self, number, vehicles, coordinates):
         self.number = number
         self.vehicles = vehicles
         self.coordinates = coordinates
 
 class Vehicle:
+    """
+    Station Object
+    id -> id of the vehicle
+    available -> availability of vehicle
+    coordinates -> coords of vehicle
+    """
     def __init__(self, id, vehicle, coordinates, available):
         self.id = id
         self.vehicle = vehicle
         self.coordinates = coordinates
         self.available = available
 
-##Instantiate Vehicles For Stations
 def generate_vehicles(number_of_vehicles, station_coords):
+    """
+    Generates vehicles with a random vehcile type
+    """
     vehicles = []
     for i in range(number_of_vehicles):
         vehicle = Vehicle(random.randint(100, 999),  random.choice(list(Vehicle_Type)), station_coords, True)
         vehicles.append(vehicle)
     return vehicles
 
-##Instantiate Stations
 def build_stations(number_of_stations, coordinates, station_num):
+    """
+    Generates stations with 5 vehicles per station at the specified coordinates
+    """
     stations = []
     for i in range(number_of_stations):
-        station = Station(station_num[i], generate_vehicles(3, coordinates[i]), coordinates[i])
+        station = Station(station_num[i], generate_vehicles(5, coordinates[i]), coordinates[i])
         stations.append(station)
     return stations
 
-##Generate Vehicle Path
 def generate_path(maze, source, destination, visited, path, paths, rows, columns):
-  if source == destination:
-    paths.append(path[:])  
-    return
-  if len(paths) != 0:
-      return paths
-  
-  x, y = source
-  visited[x][y] = True
-  if x >= 0 and y >= 0 and x < rows and y < columns and maze[x][y]:
-    neighbors = [(1,0),(-1,0),(0,-1),(0,1)]
-    for index, neighbor in enumerate(neighbors):
-        next_xsquare = x + neighbor[0]
-        next_ysquare = y + neighbor[1]
-        if (next_xsquare < columns and next_xsquare >= 0 and next_ysquare < rows and next_ysquare >= 0 and (not visited[next_xsquare][next_ysquare])):
-                path.append((next_xsquare, next_ysquare))
-                new_source = (next_xsquare, next_ysquare)
-                generate_path(maze, new_source, destination, visited, path, paths, rows, columns)
-                path.pop()
-  visited[x][y] = False
-  return paths
+    """
+    Generates a path given the map with the source and destination
+    """
+    if source == destination:
+        paths.append(path[:])  
+        return
+    if len(paths) != 0:
+        return paths
+    
+    x, y = source
+    visited[x][y] = True
+    if x >= 0 and y >= 0 and x < rows and y < columns and maze[x][y] == 1:
+        neighbors = [(1,0),(-1,0),(0,-1),(0,1)]
+        for index, neighbor in enumerate(neighbors):
+            next_xsquare = x + neighbor[0]
+            next_ysquare = y + neighbor[1]
+            if (next_xsquare < columns and next_xsquare >= 0 and next_ysquare < rows and next_ysquare >= 0 and (not visited[next_xsquare][next_ysquare])):
+                    path.append((next_xsquare, next_ysquare))
+                    new_source = (next_xsquare, next_ysquare)
+                    generate_path(maze, new_source, destination, visited, path, paths, rows, columns)
+                    path.pop()
+    visited[x][y] = False
+    return paths
 
 def get_paths(maze, source, destination):
-  rows = len(maze)
-  columns = len(maze[0])
-  visited = [[False]*rows for _ in range(columns)] #may be inversed
-  path = [source]
-  paths = []
-  path = generate_path(maze, source, destination, visited, path, paths, rows, columns)
-  current_path.append(path)
-  return path
+    """
+    Actaul function that should be called to generate the path for a vehicle
+    """
+    rows = len(maze)
+    columns = len(maze[0])
+    visited = [[False]*rows for _ in range(columns)] #may be inversed
+    path = [source]
+    paths = []
+    path = generate_path(maze, source, destination, visited, path, paths, rows, columns)
+    current_path.append(path)
+    return path
 
 ##Receive Dispatch Request
 def handle_dispatch_request():
@@ -136,7 +159,7 @@ def create_get_test_path():
     return path
 
 
-# Initializes Stations
+# Initializes Hard Coded Stations (Not Used if Dispatch Sends the Starting Locations)
 def init_stations():
     station_coords = []
     station1 = (3,5)
@@ -159,31 +182,22 @@ def init_stations():
     station_number.append(station4_num)
     return build_stations(4, station_coords, station_number)
 
-
+#Displaying Initial Stations
+def display_stations():
+    for station in stations:
+        print("Station: ")
+        print(station.number)
+        print(station.coordinates)
+        print("Vehicles: ")
+        for vehicle in station.vehicles:
+            print(vehicle.id)
+            print(vehicle.vehicle)
+            print(vehicle.coordinates)
+            print(vehicle.available)
+        print("------------")
 
 test_path()
 
-def get_path():
-    return current_path.pop(0)
-
-def get_stations():
-    return stations
-
-def get_station_vehicles(station_id):
-    for station in stations:
-        if (station_id == station.number):
-            return station
-    return "Does not exist"
-
-#Displaying Initial Stations
-for station in stations:
-    print("Station: ")
-    print(station.number)
-    print(station.coordinates)
-    print("Vehicles: ")
-    for vehicle in station.vehicles:
-        print(vehicle.id)
-        print(vehicle.vehicle)
-        print(vehicle.coordinates)
-        print(vehicle.available)
-    print("------------")
+if __name__ == "__station__":
+    uvicorn.run(app, host="0.0.0.0", port=5000)
+   
