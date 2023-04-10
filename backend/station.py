@@ -176,14 +176,14 @@ def sample():
         ##Response To Dispatch With Path
 
 
-def handle_dispatch_request(ch, method, properties, body):
+def handle_dispatch_request(ch, method, properties, body): ##Would need to pass the station's coordinates
     print('handling dispatch request')
     disaster = json.loads(body)
     disaster_coordinates = disaster["disaster_location"]
     disaster_level = disaster["disaster_level"]
     map = disaster["map"]
-    closest_station = assign_station(disaster_coordinates, disaster_level)
-    print("Station coords: " + str(closest_station.coordinates))
+    closest_station = assign_station(disaster_coordinates, disaster_level) ##Don't need this if each station is getting its own path
+    print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
     print("Disaster coords: " + str(disaster_coordinates))
     closest_path = get_paths(map, closest_station.coordinates, tuple(disaster_coordinates)) #Expects Coordinates to Be Tuples
 
