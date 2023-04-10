@@ -1,3 +1,4 @@
+import json
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
@@ -40,6 +41,24 @@ class Station:
         self.number = number
         self.vehicles = vehicles
         self.coordinates = coordinates
+        self.closest_station = None
+        self.channel = None
+
+    def bind_to_dispatch_exchange(self):
+        print('binding to dispatch exchange')
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.channel = connection.channel()
+        self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
+
+        result = self.channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue
+        self.channel.queue_bind(exchange='dispatch_exchange', queue=queue_name)
+        self.channel.basic_consume(queue=queue_name, on_message_callback=handle_dispatch_request, auto_ack=True)
+
+    def start_consuming(self):
+        print(f'Station {self.number} is now consuming messages...')
+        self.channel.start_consuming()
+        
 
 class Vehicle:
     """
@@ -70,7 +89,8 @@ def build_stations(number_of_stations, coordinates, station_num):
     """
     stations = []
     for i in range(number_of_stations):
-        station = Station(station_num[i], generate_vehicles(5, coordinates[i]), coordinates[i])
+        station = Station(station_num[i], generate_vehicles(3, coordinates[i]), coordinates[i])
+        station.bind_to_dispatch_exchange()
         stations.append(station)
     return stations
 
@@ -112,28 +132,27 @@ def get_paths(maze, source, destination):
     current_path.append(path)
     return path
 
-##Receive Dispatch Request
-def handle_dispatch_request():
-    ##Instatiation Code
-    ##Reuires Some More Work
-    while True:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
-        channel = connection.channel()
-        channel.queue_declare(queue='Dispatch-Queue')
+# Receive Dispatch Request
 
-        def callback(ch, method, properties, body):
-            request = pickle.loads(body)
-            print("Received %r" % request)
-            connection.close()
 
-        tag = channel.basic_consume(queue='Dispatch-Queue', on_message_callback=callback, auto_ack=True)
-        channel.start_consuming()
+def handle_dispatch_request(ch, method, properties, body):
+    disaster = json.loads(body)
+    disaster_coordinates = disaster["location"]
+    disaster_level = disaster["level"]
 
-## Sends resposne to dispatch regarding status
-def send_dispatch_response(station_num, status):
+    # TO-DO:
+    # calculate closest station and path to disaster
+    # call send_dispatch_response()
+        
+
+# Sends response to dispatch regarding status
+
+
+def send_dispatch_response(station_num, path):
+    # Send a message to dispatch stating its num and path to the disaster
     station_response = {
         "station": station_num,
-        "status": status
+        "path": path
     }
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
