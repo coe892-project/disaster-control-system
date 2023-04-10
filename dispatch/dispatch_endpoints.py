@@ -1,7 +1,9 @@
+from http.client import HTTPResponse
 from typing import Tuple
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from dispatch import Dispatch
@@ -17,6 +19,10 @@ class MapResponse(BaseModel):
 
 class MapRequest(BaseModel):
     map_size: Tuple[int, int]
+
+class Disaster(BaseModel):
+    disaster_coordinates: Tuple[int, int]
+    disaster_level: int
 
 
 @app.get("/map")
@@ -49,6 +55,19 @@ def generate_stations(num_of_stations: int):
     dispatch.generate_stations(num_of_stations)
     world_map = [[tile.value for tile in row] for row in dispatch.world_map]
     return {"world_map": world_map, "station_coordinates": dispatch.station_coordinates}
+
+@app.post("/map/generate/disaster")
+def generate_disaster(disaster: Disaster):
+    global dispatch
+    if dispatch is None:
+        raise HTTPException(status_code=404,
+                            detail="Dispatch service has not been initialized yet. "
+                                   "Call '/map/generate' before continuing.")
+    if disaster.disaster_coordinates and disaster.disaster_level:
+        response = dispatch.generate_disaster(disaster.disaster_coordinates, disaster.disaster_level)
+        return response
+    else:
+        return JSONResponse(status_code=400, content='Error')
 
 
 if __name__ == "__main__":
