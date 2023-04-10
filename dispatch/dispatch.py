@@ -154,9 +154,13 @@ class Dispatch:
         :param level: threat level of the disaster
         :return: 
         """
+
+        map = [[item.value for item in sublist] for sublist in self.world_map]
+
         request = {
             "disaster_location": location,
-            "disaster_level": level
+            "disaster_level": level,
+            "map": map
         }
 
         self.channel.basic_publish(exchange='dispatch_exchange', routing_key='', body=json.dumps(request))
@@ -174,11 +178,12 @@ class Dispatch:
 
         if self.get_tile(x, y) == TileType.FREE:
             self.set_tile(x, y, TileType.DISASTER)
+            print('sending dispatch request')
             self.send_dispatch_request(location, level)
         else:
             print('Space occupied. Disaster could not be created')
-        
-        return self.handle_station_response()
+
+        return self.handle_station_response
 
     def handle_station_response():
         connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
@@ -195,5 +200,3 @@ class Dispatch:
         channel.start_consuming()
 
         return response
-
-
