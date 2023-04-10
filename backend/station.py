@@ -8,6 +8,7 @@ import numpy as np
 import pickle
 import pika
 import math 
+from collections import deque
 
 app = FastAPI()
 class Vehicle_Type(Enum):
@@ -100,41 +101,43 @@ def build_stations(number_of_stations, coordinates, station_num):
 
     return stations
 
-def generate_path(maze, source, destination, visited, path, paths, rows, columns):
-    """
-    Generates a path given the map with the source and destination
-    """
-    if source == destination:
-        paths.append(path[:])  
-        return
-    if len(paths) != 0:
-        return paths
-    
-    x, y = source
-    visited[x][y] = True
-    if x >= 0 and y >= 0 and x < rows and y < columns and maze[x][y] == 1:
-        neighbors = [(1,0),(-1,0),(0,-1),(0,1)]
-        for index, neighbor in enumerate(neighbors):
-            next_xsquare = x + neighbor[0]
-            next_ysquare = y + neighbor[1]
-            if (next_xsquare < columns and next_xsquare >= 0 and next_ysquare < rows and next_ysquare >= 0 and (not visited[next_xsquare][next_ysquare])):
-                    path.append((next_xsquare, next_ysquare))
-                    new_source = (next_xsquare, next_ysquare)
-                    generate_path(maze, new_source, destination, visited, path, paths, rows, columns)
-                    path.pop()
-    visited[x][y] = False
-    return paths
+def generate_path(maze, start, end):
+    visited = set()
+    queue = deque([start])
+    path = {start: None}
+
+    while queue:
+        source = queue.popleft()
+        if source == end:
+            shortest_path = [end]
+            while shortest_path[-1] != start:
+                shortest_path.append(path[shortest_path[-1]])
+            shortest_path.reverse()
+            return shortest_path
+
+        row, col = source
+        for x, y in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            neighbor = (row + x, col + y)
+            if neighbor in visited:
+                continue
+            if 0 <= neighbor[0] < len(maze) and 0 <= neighbor[1] < len(maze[0]) and maze[neighbor[0]][neighbor[1]] == 1:
+                visited.add(neighbor)
+                queue.append(neighbor)
+                path[neighbor] = source
+
+    # If we have explored the entire maze without finding the end location, return None
+    return None
 
 def get_paths(maze, source, destination):
     """
     Actual function that should be called to generate the path for a vehicle
     """
-    rows = len(maze)
-    columns = len(maze[0])
-    visited = [[False]*rows for _ in range(columns)] #may be inversed
     path = [source]
-    paths = []
-    path = generate_path(maze, source, destination, visited, path, paths, rows, columns)
+    x, y = source
+    maze[x][y] = 1
+    print(np.matrix(maze))
+    path = generate_path(maze, source, destination)
+    print(path)
     return path
 
 
@@ -179,10 +182,10 @@ def handle_dispatch_request(ch, method, properties, body):
     disaster_coordinates = disaster["disaster_location"]
     disaster_level = disaster["disaster_level"]
     map = disaster["map"]
-
     closest_station = assign_station(disaster_coordinates, disaster_level)
-
-    closest_path = get_paths(map, closest_station.coordinates, disaster_coordinates)
+    print("Station coords: " + str(closest_station.coordinates))
+    print("Disaster coords: " + str(disaster_coordinates))
+    closest_path = get_paths(map, closest_station.coordinates, tuple(disaster_coordinates)) #Expects Coordinates to Be Tuples
 
     # call send_dispatch_response()
     print('sending dispatch desponse')
@@ -205,13 +208,17 @@ def send_dispatch_response(station_num, path):
 
 ##Testing
 def test_path():
-    map = [[1, 1, 1, 0, 1], [1, 1, 0, 0, 1], [0, 1, 0, 1, 1], [1, 1, 0, 0, 0],  [1, 1, 1, 1, 1]]
+    map = [[1, 1, 1, 3, 1], [1, 1, 3, 3, 1], [3, 1, 3, 1, 1], [1, 1, 3, 3, 2],  [1, 1, 1, 1, 1]]
+    map = [[1, 2, 1, 3, 1, 1, 1, 1, 1, 1], [1, 1, 1, 3, 1, 1, 1, 1, 1, 1], [1, 3, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 2, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 2, 1, 1, 1, 1], [1, 1, 0, 1, 1, 1, 1, 2, 1, 1], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 3, 1, 1, 1, 1, 1]]
     print(np.matrix(map))
-    start = (0,0)
-    end = (4,4)
+    start = (8,3)
+    end = (2,7)
     path = get_paths(map, start, end)
+    print(len(path))
     print("Path is: ")
     print(path)
+
+#test_path()
 
 ##Testing
 def create_get_test_path():
@@ -258,7 +265,7 @@ def display_stations():
             print(vehicle.available)
         print("------------")
 
-test_path()
+
 
 if __name__ == "__station__":
     uvicorn.run(app, host="0.0.0.0", port=5000)
