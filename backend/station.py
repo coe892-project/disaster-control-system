@@ -135,7 +135,7 @@ def get_paths(maze, source, destination):
     path = [source]
     x, y = source
     maze[x][y] = 1
-    print(np.matrix(maze))
+    #print(np.matrix(maze))
     path = generate_path(maze, source, destination)
     print(path)
     return path
@@ -176,6 +176,15 @@ def sample():
         ##Response To Dispatch With Path
 
 
+def show_path(map, path):
+    if path is None:
+        return None
+    for coord in path:
+        map[coord[1]][coord[0]] = 7
+    print(np.matrix(map))
+
+
+    
 def handle_dispatch_request(ch, method, properties, body): ##Would need to pass the station's coordinates
     print('handling dispatch request')
     disaster = json.loads(body)
@@ -186,6 +195,7 @@ def handle_dispatch_request(ch, method, properties, body): ##Would need to pass 
     print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
     print("Disaster coords: " + str(disaster_coordinates))
     closest_path = get_paths(map, closest_station.coordinates, tuple(disaster_coordinates)) #Expects Coordinates to Be Tuples
+    show_path(map, closest_path)
 
     # call send_dispatch_response()
     print('sending dispatch desponse')
@@ -269,4 +279,3 @@ def display_stations():
 
 if __name__ == "__station__":
     uvicorn.run(app, host="0.0.0.0", port=5000)
-   
