@@ -7,7 +7,7 @@ import random
 import numpy as np
 import pickle
 import pika
-import pprint
+import math 
 
 app = FastAPI()
 class Vehicle_Type(Enum):
@@ -23,8 +23,7 @@ class Tile_Type(Enum):
     STATION = 2
     TERRAIN = 3
 
-current_path = []
-map = [[1, 1, 1, 0, 1], [1, 1, 0, 0, 1], [0, 1, 0, 1, 1], [1, 1, 0, 0, 0],  [1, 1, 1, 1, 1]]
+map = [[1, 1, 1, 0, 1, 1, 1, 1, 1, 1], [1, 1, 0, 0, 1, 1, 1, 1, 1, 1], [0, 1, 0, 1, 1, 1, 1, 1, 1, 1], [1, 1, 0, 0, 0, 1, 1, 1, 1, 1],  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 stations = []
 
 # Dispatch notify all stations (level + coordinates)
@@ -60,6 +59,9 @@ class Station:
         self.channel.start_consuming()
         
 
+
+
+#Unused
 class Vehicle:
     """
     Station Object
@@ -73,9 +75,10 @@ class Vehicle:
         self.coordinates = coordinates
         self.available = available
 
+#Unused
 def generate_vehicles(number_of_vehicles, station_coords):
     """
-    Generates vehicles with a random vehcile type
+    Generates vehicles with a random vehicle type 
     """
     vehicles = []
     for i in range(number_of_vehicles):
@@ -83,14 +86,17 @@ def generate_vehicles(number_of_vehicles, station_coords):
         vehicles.append(vehicle)
     return vehicles
 
+
+
+
+
 def build_stations(number_of_stations, coordinates, station_num):
     """
     Generates stations with 5 vehicles per station at the specified coordinates
     """
     stations = []
     for i in range(number_of_stations):
-        station = Station(station_num[i], generate_vehicles(3, coordinates[i]), coordinates[i])
-        station.bind_to_dispatch_exchange()
+        station = Station(station_num[i], random.randint(1, 7), coordinates[i])
         stations.append(station)
     return stations
 
@@ -121,7 +127,7 @@ def generate_path(maze, source, destination, visited, path, paths, rows, columns
 
 def get_paths(maze, source, destination):
     """
-    Actaul function that should be called to generate the path for a vehicle
+    Actual function that should be called to generate the path for a vehicle
     """
     rows = len(maze)
     columns = len(maze[0])
@@ -129,10 +135,42 @@ def get_paths(maze, source, destination):
     path = [source]
     paths = []
     path = generate_path(maze, source, destination, visited, path, paths, rows, columns)
-    current_path.append(path)
     return path
 
-# Receive Dispatch Request
+
+def assign_station(destination, disaster_level):
+    """
+    Assigns the nearest station with the appropriate resources
+    """
+    ##Mapping of 
+    if disaster_level == 1:
+        resources = 1
+    elif disaster_level == 2:
+        resources = 3
+    elif disaster_level == 3:
+        resources = 5
+
+    min_distance = 100
+    assigned_station = stations[0]
+    for station in stations:
+        coords = station.coordinates
+        dist = math.dist(coords, destination)
+        if (dist < min_distance and station.vehicles >= resources):
+            assigned_station = station
+            break
+    return assigned_station
+
+#Sample Skeleton Code Not Actually Implemented
+def sample():
+    init_stations() #replace with actual stations from dispatch
+    display_stations()
+    while (True):
+        #Receive Disaster From Dispatch
+        global map
+        map = new_map #Update Map
+        station = assign_station(destination, disaster_level) #Get closest station
+        path = get_paths(map, station.coordinates, destination)  #get path from station to disaster
+        ##Response To Dispatch With Path
 
 
 def handle_dispatch_request(ch, method, properties, body):
