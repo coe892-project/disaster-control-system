@@ -40,7 +40,6 @@ class Station:
         self.number = number
         self.vehicles = vehicles
         self.coordinates = coordinates
-        self.closest_station = None
         self.channel = None
 
     def bind_to_dispatch_exchange(self):
@@ -94,10 +93,11 @@ def build_stations(number_of_stations, coordinates, station_num):
     """
     Generates stations with 5 vehicles per station at the specified coordinates
     """
-    stations = []
     for i in range(number_of_stations):
         station = Station(station_num[i], random.randint(1, 7), coordinates[i])
         stations.append(station)
+        station.bind_to_dispatch_exchange()
+
     return stations
 
 def generate_path(maze, source, destination, visited, path, paths, rows, columns):
@@ -174,14 +174,19 @@ def sample():
 
 
 def handle_dispatch_request(ch, method, properties, body):
+    print('handling dispatch request')
     disaster = json.loads(body)
-    disaster_coordinates = disaster["location"]
-    disaster_level = disaster["level"]
+    disaster_coordinates = disaster["disaster_location"]
+    disaster_level = disaster["disaster_level"]
+    map = disaster["map"]
 
-    # TO-DO:
-    # calculate closest station and path to disaster
+    closest_station = assign_station(disaster_coordinates, disaster_level)
+
+    closest_path = get_paths(map, closest_station.coordinates, disaster_coordinates)
+
     # call send_dispatch_response()
-        
+    print('sending dispatch desponse')
+    send_dispatch_response(closest_station.number, closest_path)
 
 # Sends response to dispatch regarding status
 
