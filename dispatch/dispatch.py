@@ -1,6 +1,13 @@
 import random
 from enum import Enum
+import threading
 from typing import Tuple
+import json
+from fastapi import FastAPI
+import numpy as np
+import pika
+
+from backend.station import build_stations
 
 
 class TileType(Enum):
@@ -23,6 +30,11 @@ class Dispatch:
         self.world_map: list[list[TileType]] = [[TileType.FREE for _ in range(map_size[0])] for _ in
                                                 range(map_size[1])]
         self.station_coordinates: list[Tuple[int, int]] = []
+
+        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.channel = self.connection.channel()
+        self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
+   
 
     def generate_map(self):
         """
@@ -59,6 +71,17 @@ class Dispatch:
                     self.set_tile(x, y, TileType.STATION)
                     self.station_coordinates.append((x, y))
                     valid_spot = True
+
+        station_numbers = []
+        for _ in range(num_stations):
+            station_numbers.append(random.randint(1000, 9999))
+        
+        stations = build_stations(num_stations, self.station_coordinates, station_numbers)
+        
+        # have each station start consuming on a separate thread so that it's non-blocking
+        for station in stations:
+            t = threading.Thread(target=station.start_consuming)
+            t.start()
 
     def check_neighbours(self, position: Tuple[int, int], tile: TileType) -> bool:
         """
@@ -123,3 +146,54 @@ class Dispatch:
                 map_str += str(self.get_tile(x, y).value)
             map_str += "\n"
         return map_str
+
+    def send_dispatch_request(self, location, level):
+        """
+        Publish to station queue to notify stations about a disaster's location and threat level
+        :param location: cooordinates of the disaster
+        :param level: threat level of the disaster
+        :return: 
+        """
+        request = {
+            "disaster_location": location,
+            "disaster_level": level
+        }
+
+        self.channel.basic_publish(exchange='dispatch_exchange', routing_key='', body=json.dumps(request))
+
+    def generate_disaster(self, location, level):
+        """
+        Generates a disaster with info provided by front-end which includes level of intensity
+        and location.
+        :param 
+        :return: 
+        """
+        # code to generate disaster
+        x = location[0]
+        y = location[1]
+
+        if self.get_tile(x, y) == TileType.FREE:
+            self.set_tile(x, y, TileType.DISASTER)
+            self.send_dispatch_request(location, level)
+        else:
+            print('Space occupied. Disaster could not be created')
+        
+        return self.handle_station_response()
+
+    def handle_station_response():
+        connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
+        channel = connection.channel()
+
+        channel.queue_declare(queue="Station-Response")
+
+        response = []
+
+        def callback(ch, method, properties, body):
+            response.append = json.loads(body)
+        
+        channel.basic_consume(queue="Station-Response", on_message_callback=callback)
+        channel.start_consuming()
+
+        return response
+
+
