@@ -10,7 +10,6 @@ import pika
 import math 
 from collections import deque
 
-app = FastAPI()
 class Vehicle_Type(Enum):
     ambulance = 1
     firetruck = 2
@@ -57,38 +56,6 @@ class Station:
     def start_consuming(self):
         print(f'Station {self.number} is now consuming messages...')
         self.channel.start_consuming()
-        
-
-
-
-#Unused
-class Vehicle:
-    """
-    Station Object
-    id -> id of the vehicle
-    available -> availability of vehicle
-    coordinates -> coords of vehicle
-    """
-    def __init__(self, id, vehicle, coordinates, available):
-        self.id = id
-        self.vehicle = vehicle
-        self.coordinates = coordinates
-        self.available = available
-
-#Unused
-def generate_vehicles(number_of_vehicles, station_coords):
-    """
-    Generates vehicles with a random vehicle type 
-    """
-    vehicles = []
-    for i in range(number_of_vehicles):
-        vehicle = Vehicle(random.randint(100, 999),  random.choice(list(Vehicle_Type)), station_coords, True)
-        vehicles.append(vehicle)
-    return vehicles
-
-
-
-
 
 def build_stations(number_of_stations, coordinates, station_num):
     """
@@ -197,8 +164,6 @@ def handle_dispatch_request(ch, method, properties, body): ##Would need to pass 
     closest_path = get_paths(map, closest_station.coordinates, tuple(disaster_coordinates)) #Expects Coordinates to Be Tuples
     show_path(map, closest_path)
 
-    # call send_dispatch_response()
-    print('sending dispatch desponse')
     send_dispatch_response(closest_station.number, closest_path)
 
 # Sends response to dispatch regarding status
@@ -206,15 +171,14 @@ def handle_dispatch_request(ch, method, properties, body): ##Would need to pass 
 
 def send_dispatch_response(station_num, path):
     # Send a message to dispatch stating its num and path to the disaster
-    station_response = {
-        "station": station_num,
-        "path": path
-    }
+    print('sending dispatch response')
+    message = "{} {}".format(station_num, path)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
-    channel.queue_declare(queue='Station-Response')
-    channel.basic_publish(exchange='', routing_key='Station-Response', body=pickle.dumps(station_response))
-    connection.close()
+    channel.queue_declare(queue='DisasterResponse')
+    channel.basic_publish(exchange='', routing_key='DisasterResponse', body=message)
+    #print('station body:', json.dumps(station_response))
+    #connection.close()
 
 ##Testing
 def test_path():
@@ -274,8 +238,3 @@ def display_stations():
             print(vehicle.coordinates)
             print(vehicle.available)
         print("------------")
-
-
-
-if __name__ == "__station__":
-    uvicorn.run(app, host="0.0.0.0", port=5000)

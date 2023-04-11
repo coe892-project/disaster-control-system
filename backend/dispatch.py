@@ -7,7 +7,7 @@ from fastapi import FastAPI
 import numpy as np
 import pika
 
-from backend.station import build_stations
+from station import build_stations
 
 
 class TileType(Enum):
@@ -15,7 +15,6 @@ class TileType(Enum):
     FREE = 1
     STATION = 2
     TERRAIN = 3
-
 
 class Dispatch:
     """
@@ -183,20 +182,20 @@ class Dispatch:
         else:
             print('Space occupied. Disaster could not be created')
 
-        return self.handle_station_response
-
-    def handle_station_response():
         connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
         channel = connection.channel()
 
-        channel.queue_declare(queue="Station-Response")
-
-        response = []
+        channel.queue_declare(queue="DisasterResponse")
 
         def callback(ch, method, properties, body):
-            response.append = json.loads(body)
+            response = body.decode('utf-8')
+            station_response = response.split(" ", 1)
+            #dispatch_response.append([station_response[0], station_response[1]])
+            print(station_response)
+            #return station_response
         
-        channel.basic_consume(queue="Station-Response", on_message_callback=callback)
+        channel.basic_consume(queue="DisasterResponse", on_message_callback=callback, auto_ack=True)
         channel.start_consuming()
-
-        return response
+        channel.close()
+    
+        
