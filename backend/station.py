@@ -130,18 +130,6 @@ def assign_station(destination, disaster_level):
             break
     return assigned_station
 
-#Sample Skeleton Code Not Actually Implemented
-def sample():
-    init_stations() #replace with actual stations from dispatch
-    display_stations()
-    while (True):
-        #Receive Disaster From Dispatch
-        global map
-        map = new_map #Update Map
-        station = assign_station(destination, disaster_level) #Get closest station
-        path = get_paths(map, station.coordinates, destination)  #get path from station to disaster
-        ##Response To Dispatch With Path
-
 
 def show_path(map, path):
     if path is None:
@@ -151,18 +139,17 @@ def show_path(map, path):
     print(np.matrix(map))
 
 
-    
-def handle_dispatch_request(ch, method, properties, body): ##Would need to pass the station's coordinates
-    print('handling dispatch request')
+
+def handle_dispatch_request(ch, method, properties, body): 
     disaster = json.loads(body)
     disaster_coordinates = disaster["disaster_location"]
     disaster_level = disaster["disaster_level"]
     map = disaster["map"]
-    closest_station = assign_station(disaster_coordinates, disaster_level) ##Don't need this if each station is getting its own path
-    print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
-    print("Disaster coords: " + str(disaster_coordinates))
+    closest_station = assign_station(disaster_coordinates, disaster_level) 
+    # print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
+    # print("Disaster coords: " + str(disaster_coordinates))
     closest_path = get_paths(map, closest_station.coordinates, tuple(disaster_coordinates)) #Expects Coordinates to Be Tuples
-    show_path(map, closest_path)
+    #show_path(map, closest_path)
 
     send_dispatch_response(closest_station.number, closest_path)
 
@@ -171,13 +158,11 @@ def handle_dispatch_request(ch, method, properties, body): ##Would need to pass 
 
 def send_dispatch_response(station_num, path):
     # Send a message to dispatch stating its num and path to the disaster
-    print('sending dispatch response')
     message = "{} {}".format(station_num, path)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
     channel.queue_declare(queue='DisasterResponse')
     channel.basic_publish(exchange='', routing_key='DisasterResponse', body=message)
-    #print('station body:', json.dumps(station_response))
     #connection.close()
 
 ##Testing

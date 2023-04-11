@@ -177,10 +177,10 @@ class Dispatch:
 
         if self.get_tile(x, y) == TileType.FREE:
             self.set_tile(x, y, TileType.DISASTER)
-            print('sending dispatch request')
             self.send_dispatch_request(location, level)
         else:
             print('Space occupied. Disaster could not be created')
+            return 0
 
         connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
         channel = connection.channel()
@@ -189,13 +189,20 @@ class Dispatch:
 
         def callback(ch, method, properties, body):
             response = body.decode('utf-8')
+            global station_response
             station_response = response.split(" ", 1)
-            #dispatch_response.append([station_response[0], station_response[1]])
-            print(station_response)
-            #return station_response
-        
+            self.set_tile(x, y, TileType.FREE)
+            channel.stop_consuming()
+            
         channel.basic_consume(queue="DisasterResponse", on_message_callback=callback, auto_ack=True)
-        channel.start_consuming()
-        channel.close()
-    
+        t = threading.Thread(target=channel.start_consuming)
+        t.start()
+
+        if station_response[0] is not None and station_response[1] is not None:
+            return station_response
+        else:    
+            return 1 # if path is empty, have api return error
+        
+
+        
         

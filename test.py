@@ -1,4 +1,4 @@
-from dispatch.dispatch import Dispatch
+from backend.dispatch import Dispatch
 
 dispatch = Dispatch([10, 10])
 dispatch.generate_map()

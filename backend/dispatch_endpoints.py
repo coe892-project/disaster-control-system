@@ -65,9 +65,12 @@ def generate_disaster(disaster: Disaster):
                                    "Call '/map/generate' before continuing.")
     if disaster.disaster_coordinates and disaster.disaster_level:
         response = dispatch.generate_disaster(disaster.disaster_coordinates, disaster.disaster_level)
-        return response
-    else:
-        return JSONResponse(status_code=400, content='Error')
+        if response == 0:
+            return JSONResponse(status_code=400, content='Error: tile is not free to place disaster on.')
+        elif response == 1:
+            return JSONResponse(status_code=400, content='Error: No path found to disaster')
+        
+        return {"response": response}
 
 
 if __name__ == "__main__":
