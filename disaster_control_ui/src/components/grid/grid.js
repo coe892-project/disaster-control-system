@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './grid.css';
 
 export function Grid() {
@@ -22,6 +22,8 @@ export function Grid() {
       body: JSON.stringify(mapData)
     };
     
+    //'http://127.0.0.1:8000/map/generate'
+
     try {
       const response = await fetch('http://127.0.0.1:8000/map/generate', requestMap);
       const data = await response.json();
@@ -60,7 +62,7 @@ export function Grid() {
           } else if (value === 2) {
             newButtonColors[index] = 'darkblue';
           } else if (value === 3) {
-            newButtonColors[index] = 'brown';
+            newButtonColors[index] = '#964B00';
           }
         }
       }
@@ -71,9 +73,14 @@ export function Grid() {
     }
   }
 
-  //Generate the map and stations first
-  generateMap();
-  generateStations();
+   //Generate the map and stations first
+   useEffect(() => {
+    async function generateData() {
+      await generateMap();
+      await generateStations();
+    }
+    generateData();
+  }, []);
 
 
 
@@ -81,27 +88,25 @@ export function Grid() {
     setSelectedRadioValue(e.target.value);
   };
 
-  async function handleFetch(color, x, y) {
+  async function handleFetch(x, y, threatLevel) {
     try {
-      const response = await fetch(`/api/${color}`, {
+
+      //the data is passed as (y,x)
+      const disasterData = {
+        disaster_coordinates: [String(y), String(x)],
+        disaster_level: threatLevel
+      };
+
+      const response = await fetch(`http://127.0.0.1:8000/map/generate/disaster`, {
         method: 'POST',
-        body: JSON.stringify({ x, y, color }),
+        body: JSON.stringify(disasterData),
         headers: {
           'Content-Type': 'application/json',
         },
       });
       const data = await response.json();
-      return data;
-      //if response is success, then
-      if (data.status) {
-        // change color back to light blue
-        const index = data.y * 10 + data.x;
-        setButtonColors((prevColors) => {
-          const newColors = [...prevColors];
-          newColors[index] = 'lightblue';
-          return newColors;
-        });
-      }
+      console.log(data);
+     
     } catch (error) {
       console.error(error);
       return null;
@@ -129,17 +134,17 @@ export function Grid() {
         case 'low':
           newColors[index] = 'yellow';
           //make a low status request
-          handleFetch('/api/low', { x, y, color: 'yellow' });
+          handleFetch(x, y, 1);
           break;
         case 'moderate':
           newColors[index] = 'orange';
           //make a medium status request
-          handleFetch('/api/medium', { x, y, color: 'orange' });
+          handleFetch(x, y, 2);
           break;
         case 'severe':
           newColors[index] = 'red';
           //make a high status request
-          handleFetch('/api/high', { x, y, color: 'red' });
+          handleFetch(x, y, 3);
           break;
         default:
           newColors[index] = 'lightblue';
