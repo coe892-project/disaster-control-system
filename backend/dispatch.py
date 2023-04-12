@@ -60,6 +60,12 @@ class Dispatch:
         :param num_stations: Number of stations to be generated.
         :return:
         """
+        #Added to clear stations
+        if len(self.station_coordinates) != 0:
+            for station in self.station_coordinates:
+                self.set_tile(station[0], station[1], TileType.FREE) #Not sure if this is redundant
+            self.station_coordinates.clear()
+            
         max_x, max_y = len(self.world_map[0]) - 1, len(self.world_map) - 1
         for _ in range(num_stations):
             valid_spot = False

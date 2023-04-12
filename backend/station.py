@@ -23,7 +23,7 @@ class Tile_Type(Enum):
     STATION = 2
     TERRAIN = 3
 
-map = [[1, 1, 1, 0, 1, 1, 1, 1, 1, 1], [1, 1, 0, 0, 1, 1, 1, 1, 1, 1], [0, 1, 0, 1, 1, 1, 1, 1, 1, 1], [1, 1, 0, 0, 0, 1, 1, 1, 1, 1],  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+map = []
 stations = []
 
 # Dispatch notify all stations (level + coordinates)
