@@ -5,10 +5,77 @@ export function Grid() {
   const [buttonColors, setButtonColors] = useState(
     Array(100).fill('lightblue')
   );
+
   const [selectedRadioValue, setSelectedRadioValue] = useState('low');
 
   //1 for available, user can drop a disaster, else if availability is 0 then there is already an active disaster
   const [availablity, setAvailablity] = useState(1);
+
+  async function generateMap() {
+    const mapData = {
+      map_size: ["10", "10"]
+    };
+  
+    const requestMap = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mapData)
+    };
+    
+    try {
+      const response = await fetch('http://127.0.0.1:8000/map/generate', requestMap);
+      const data = await response.json();
+      console.log(data);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async function generateStations() {
+    const requestStations = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    };
+    
+    try {
+      const response = await fetch('http://127.0.0.1:8000/map/generate/stations/4', requestStations);
+      const finalData = await response.json();
+      // Access the world_map array
+      const worldMap = finalData.world_map;
+      console.log(worldMap);
+
+      // Access the station_coordinates array
+      const stationCoordinates = finalData.station_coordinates;
+      console.log(stationCoordinates);
+      
+      //draws out the map with new color
+      const newButtonColors = Array(100).fill('lightblue');
+      for (let i = 0; i < worldMap.length; i++) {
+        const row = worldMap[i];
+        for (let j = 0; j < row.length; j++) {
+          const value = row[j];
+          const index = i * 10 + j;
+          if (value === 1) {
+            newButtonColors[index] = 'lightblue';
+          } else if (value === 2) {
+            newButtonColors[index] = 'darkblue';
+          } else if (value === 3) {
+            newButtonColors[index] = 'brown';
+          }
+        }
+      }
+      setButtonColors(newButtonColors);
+
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  //Generate the map and stations first
+  generateMap();
+  generateStations();
+
+
 
   const handleRadioChange = (e) => {
     setSelectedRadioValue(e.target.value);
