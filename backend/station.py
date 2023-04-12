@@ -61,6 +61,10 @@ def build_stations(number_of_stations, coordinates, station_num):
     """
     Generates stations with 5 vehicles per station at the specified coordinates
     """
+    #Added to clear stations
+    if len(stations) != 0:
+        stations.clear()
+
     for i in range(number_of_stations):
         station = Station(station_num[i], random.randint(1, 7), coordinates[i])
         stations.append(station)
@@ -99,6 +103,7 @@ def get_paths(maze, source, destination):
     """
     Actual function that should be called to generate the path for a vehicle
     """
+    source = tuple((source[1],source[0]))
     path = [source]
     x, y = source
     maze[x][y] = 1
@@ -120,14 +125,17 @@ def assign_station(destination, disaster_level):
     elif disaster_level == 3:
         resources = 5
 
+    destination = tuple((destination[0], destination[1]))
     min_distance = 100
     assigned_station = stations[0]
     for station in stations:
         coords = station.coordinates
+        coords = tuple((coords[1],coords[0]))
+        print("Dest: " + str(destination) + " Station: " + str(coords))
         dist = math.dist(coords, destination)
         if (dist < min_distance and station.vehicles >= resources):
+            min_distance = dist
             assigned_station = station
-            break
     return assigned_station
 
 
@@ -145,6 +153,8 @@ def handle_dispatch_request(ch, method, properties, body):
     disaster_coordinates = disaster["disaster_location"]
     disaster_level = disaster["disaster_level"]
     map = disaster["map"]
+    display_stations()
+    print("Disaster level: " + str(disaster_level))
     closest_station = assign_station(disaster_coordinates, disaster_level) 
     # print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
     # print("Disaster coords: " + str(disaster_coordinates))
@@ -213,13 +223,4 @@ def init_stations():
 #Displaying Initial Stations
 def display_stations():
     for station in stations:
-        print("Station: ")
-        print(station.number)
-        print(station.coordinates)
-        print("Vehicles: ")
-        for vehicle in station.vehicles:
-            print(vehicle.id)
-            print(vehicle.vehicle)
-            print(vehicle.coordinates)
-            print(vehicle.available)
-        print("------------")
+        print("Station: " + str(station.number) + " Coords: " + str(station.coordinates) + " Resources: " + str(station.vehicles))
