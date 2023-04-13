@@ -1,11 +1,12 @@
-import random
-from enum import Enum
-import threading
-from typing import Tuple
 import json
-from fastapi import FastAPI
-import numpy as np
+import os
+import random
+import threading
+from enum import Enum
+from typing import Tuple
+
 import pika
+import pika.exceptions
 
 from station import build_stations
 
@@ -15,6 +16,7 @@ class TileType(Enum):
     FREE = 1
     STATION = 2
     TERRAIN = 3
+
 
 class Dispatch:
     """
@@ -29,11 +31,15 @@ class Dispatch:
         self.world_map: list[list[TileType]] = [[TileType.FREE for _ in range(map_size[0])] for _ in
                                                 range(map_size[1])]
         self.station_coordinates: list[Tuple[int, int]] = []
-
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        self.connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=os.getenv('RABBITMQ_HOST', 'localhost')))
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
-   
+        try:
+            self.channel.queue_declare(queue="DisasterResponse", durable=True)
+            self.channel.queue_purge(queue="DisasterResponse")
+            self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
+        except Exception as e:
+            print(f"Could not create channel: {e}")
 
     def generate_map(self):
         """
@@ -60,6 +66,12 @@ class Dispatch:
         :param num_stations: Number of stations to be generated.
         :return:
         """
+        # Added to clear stations
+        if len(self.station_coordinates) != 0:
+            for station in self.station_coordinates:
+                self.set_tile(station[0], station[1], TileType.FREE)  # Not sure if this is redundant
+            self.station_coordinates.clear()
+
         max_x, max_y = len(self.world_map[0]) - 1, len(self.world_map) - 1
         for _ in range(num_stations):
             valid_spot = False
@@ -74,9 +86,9 @@ class Dispatch:
         station_numbers = []
         for _ in range(num_stations):
             station_numbers.append(random.randint(1000, 9999))
-        
+
         stations = build_stations(num_stations, self.station_coordinates, station_numbers)
-        
+
         # have each station start consuming on a separate thread so that it's non-blocking
         for station in stations:
             t = threading.Thread(target=station.start_consuming)
@@ -182,9 +194,9 @@ class Dispatch:
             print('Space occupied. Disaster could not be created')
             return 0
 
-        connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=os.getenv('RABBITMQ_HOST', 'localhost')))
         channel = connection.channel()
-
+        channel.queue_delete(queue="DisasterResponse")
         channel.queue_declare(queue="DisasterResponse")
 
         def callback(ch, method, properties, body):
@@ -193,16 +205,11 @@ class Dispatch:
             station_response = response.split(" ", 1)
             self.set_tile(x, y, TileType.FREE)
             channel.stop_consuming()
-            
+
         channel.basic_consume(queue="DisasterResponse", on_message_callback=callback, auto_ack=True)
-        t = threading.Thread(target=channel.start_consuming)
-        t.start()
+        channel.start_consuming()
 
         if station_response[0] is not None and station_response[1] is not None:
             return station_response
-        else:    
-            return 1 # if path is empty, have api return error
-        
-
-        
-        
+        else:
+            return 1  # if path is empty, have api return error
