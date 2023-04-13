@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './grid.css';
 
 export function Grid() {
+  const baseURL = process.env.REACT_APP_BACKEND || "http://127.0.0.1:8000"
+
   const [buttonColors, setButtonColors] = useState(
     Array(100).fill('lightblue')
   );
@@ -23,9 +25,8 @@ export function Grid() {
     };
     
     //'http://127.0.0.1:8000/map/generate'
-
     try {
-      const response = await fetch('http://127.0.0.1:8000/map/generate', requestMap);
+      const response = await fetch(`${baseURL}/map/generate`, requestMap);
       const data = await response.json();
       console.log(data);
     } catch (error) {
@@ -40,7 +41,7 @@ export function Grid() {
     };
     
     try {
-      const response = await fetch('http://127.0.0.1:8000/map/generate/stations/4', requestStations);
+      const response = await fetch(`${baseURL}/map/generate/stations/4`, requestStations);
       const finalData = await response.json();
       // Access the world_map array
       const worldMap = finalData.world_map;
@@ -97,7 +98,7 @@ export function Grid() {
         disaster_level: threatLevel
       };
 
-      const response = await fetch(`http://127.0.0.1:8000/map/generate/disaster`, {
+      const response = await fetch(`${baseURL}/map/generate/disaster`, {
         method: 'POST',
         body: JSON.stringify(disasterData),
         headers: {

@@ -1,4 +1,6 @@
 import json
+import os
+
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uvicorn
@@ -44,7 +46,7 @@ class Station:
 
     def bind_to_dispatch_exchange(self):
         print('binding to dispatch exchange')
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+        connection = pika.BlockingConnection(pika.ConnectionParameters(host=os.getenv('RABBITMQ_HOST', 'localhost')))
         self.channel = connection.channel()
         self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
 
@@ -170,7 +172,7 @@ def handle_dispatch_request(ch, method, properties, body):
 def send_dispatch_response(station_num, path):
     # Send a message to dispatch stating its num and path to the disaster
     message = "{} {}".format(station_num, path)
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=os.getenv('RABBITMQ_HOST', 'localhost')))
     channel = connection.channel()
     channel.queue_purge(queue="DisasterResponse")
     channel.queue_declare(queue='DisasterResponse')
