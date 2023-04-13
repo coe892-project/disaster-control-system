@@ -37,9 +37,9 @@ class Dispatch:
         try:
             self.channel.queue_declare(queue="DisasterResponse", durable=True)
             self.channel.queue_purge(queue="DisasterResponse")
+            self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
         except Exception as e:
             print(f"Could not create channel: {e}")
-        self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
 
     def generate_map(self):
         """
