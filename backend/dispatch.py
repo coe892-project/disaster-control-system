@@ -32,6 +32,7 @@ class Dispatch:
 
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
         self.channel = self.connection.channel()
+        self.channel.queue_purge(queue="DisasterResponse")
         self.channel.exchange_declare(exchange='dispatch_exchange', exchange_type='fanout')
    
 
@@ -190,9 +191,9 @@ class Dispatch:
 
         connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
         channel = connection.channel()
-
+        channel.queue_delete(queue="DisasterResponse")
         channel.queue_declare(queue="DisasterResponse")
-
+        
         def callback(ch, method, properties, body):
             response = body.decode('utf-8')
             global station_response
@@ -201,8 +202,7 @@ class Dispatch:
             channel.stop_consuming()
             
         channel.basic_consume(queue="DisasterResponse", on_message_callback=callback, auto_ack=True)
-        t = threading.Thread(target=channel.start_consuming)
-        t.start()
+        channel.start_consuming()
 
         if station_response[0] is not None and station_response[1] is not None:
             return station_response

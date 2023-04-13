@@ -154,6 +154,7 @@ def handle_dispatch_request(ch, method, properties, body):
     disaster_level = disaster["disaster_level"]
     map = disaster["map"]
     display_stations()
+    print(np.matrix(map))
     print("Disaster level: " + str(disaster_level))
     closest_station = assign_station(disaster_coordinates, disaster_level) 
     # print("Station coords: " + str(closest_station.coordinates)) ## Currently is just the closeset station's coords
@@ -171,6 +172,7 @@ def send_dispatch_response(station_num, path):
     message = "{} {}".format(station_num, path)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
     channel = connection.channel()
+    channel.queue_purge(queue="DisasterResponse")
     channel.queue_declare(queue='DisasterResponse')
     channel.basic_publish(exchange='', routing_key='DisasterResponse', body=message)
     #connection.close()
