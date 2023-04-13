@@ -109,10 +109,10 @@ def get_paths(maze, source, destination):
     maze[x][y] = 1
     #print(np.matrix(maze))
     path = generate_path(maze, source, destination)
-    print(path)
-    return path
-
-
+    path_formatted = [list(t) for t in path]
+    print(path_formatted)
+    return path_formatted
+   
 def assign_station(destination, disaster_level):
     """
     Assigns the nearest station with the appropriate resources

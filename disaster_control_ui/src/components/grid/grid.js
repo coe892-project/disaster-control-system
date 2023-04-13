@@ -106,6 +106,41 @@ export function Grid() {
       });
       const data = await response.json();
       console.log(data);
+
+      //Separating the path coordinates from the data
+      const Coords = data.response[1];
+      
+      const pathCoords = JSON.parse(Coords); // parse the string back into objects
+      console.log(pathCoords);
+
+      let i = 1; // Start from the second index
+      const intervalId = setInterval(() => {
+        if (i >= pathCoords.length) {
+          clearInterval(intervalId); // Stop the interval when all blocks are colored
+          setAvailablity(1); //After path is complete, disaster is resolved user can now add a new disaster
+          return;
+        }
+
+        const [row, col] = pathCoords[i];
+        const buttonIndex = row * 10 + col;
+
+        setButtonColors(prevColors => {
+          const newColors = [...prevColors];
+          newColors[buttonIndex] = 'lime';
+          return newColors;
+        });
+
+        setTimeout(() => {
+          setButtonColors(prevColors => {
+            const newColors = [...prevColors];
+            newColors[buttonIndex] = 'lightblue';
+            return newColors;
+          });
+        }, 1000);
+
+        i++;
+      }, 1000);
+
      
     } catch (error) {
       console.error(error);
